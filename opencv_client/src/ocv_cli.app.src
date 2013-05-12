@@ -1,0 +1,16 @@
+{application, ocv_cli,
+ [
+  {description, "OpenCV / Raspberry Pi Client Application"},
+  {vsn, "1"},
+  {modules, [ ocv_cli_app,
+	      ocv_cli_sup,
+	      ocv_cli_server,
+	      cli_f ]},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { ocv_cli_app, []}},
+  {env, []}
+ ]}.
