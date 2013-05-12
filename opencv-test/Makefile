@@ -1,5 +1,5 @@
-CC=g++
-CFLAGS=-Wall `pkg-config --cflags --libs opencv`
+CC=gcc
+CFLAGS=-Wall -pedantic `pkg-config --cflags --libs opencv`
 
 all: filter camfilter 
 

@@ -9,7 +9,7 @@ main ()
 
 	CvCapture* capture = cvCaptureFromCAM( CV_CAP_ANY );
 	uchar *data;
-	int i, j, k, height, width, step, channels, key, filter = 0;
+	int i, j, k, height, width, step, channels, key, size, filter = 0;
 
 	if ( !capture ) {
 		fprintf(stderr, "[error] capture is NULL\n");
@@ -17,20 +17,21 @@ main ()
 	}
 
 	// Create a window in which the captured images will be presented
-	cvNamedWindow( "camfilter", CV_WINDOW_AUTOSIZE );
+	cvNamedWindow("camfilter", CV_WINDOW_AUTOSIZE);
 
-	IplImage* frame = cvQueryFrame( capture );
+	IplImage* frame = cvQueryFrame(capture) ;
 	// get the image data
 	height    = frame->height;
 	width     = frame->width;
 	step      = frame->widthStep;
 	channels  = frame->nChannels;
+	size  = frame->imageSize;
 	data      = (uchar *)frame->imageData;
-	printf("[debug] height/width: %dx%d, channels: %d\n",height,width,channels); 
+	printf("[debug] height/width: %dx%d, channels: %d, size: %d\n",height,width,channels, size); 
 
 	printf("Keys:\n  f:\ttoggle filter\n  ESC:\tquit\n");
 
-	while ( true ) {
+	for (;;)  {
 		// Get one frame
 		IplImage* frame = cvQueryFrame( capture );
 		if ( !frame ) {
