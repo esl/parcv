@@ -1,0 +1,39 @@
+<body>
+
+  <script>
+    function send(message) {
+		log(">> " + message);
+      ws.send(message);
+    }
+
+	function log(message) {
+		logId = document.getElementById('log');
+		t = new Date();
+		
+		logId.innerHTML = "[" + t.getHours() + ":" +  t.getMinutes() + ":" +
+		t.getSeconds() + "] " + message + "\n" + logId.innerHTML;
+	}
+
+    if ("WebSocket" in window) {
+      ws = new WebSocket("ws://localhost:8989");
+
+      ws.onopen = function() {
+			log("socket opened.");
+      };
+
+      ws.onmessage = function(evt) {
+			log("<< " + evt.data);
+      };
+
+      ws.onclose = function() {
+      	log("socket closed.");
+      };
+    } else {
+      alert("Websockets not supported!");
+    }
+  </script>
+
+  <input type="text" onchange="send(this.value); this.value = ''" />
+  <pre id="log"></pre>
+
+</body>
