@@ -2,16 +2,31 @@
 
 -behaviour(gen_server).
 
+%% API
 -export([start_link/0]).
+-export([connect/3, disconnect/0, send_data/1]).
 
+%% gen_server callbacks
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
+%% gen_server state
 -record(state, {id, socket, packet_dim, status}).
 
+%%------------------------------------------------------------------------------
 start_link() ->
   gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+connect(Host, Port, PacketDim) ->
+  gen_server:call(?MODULE, {connect, Host, Port, PacketDim}).
+
+disconnect() ->
+  gen_server:call(?MODULE, disconnect).
+
+send_data(Data) ->
+  gen_server:call(?MODULE, {send_data, Data}).
+
+%%------------------------------------------------------------------------------
 init([]) ->
   {ok, []}.
 
