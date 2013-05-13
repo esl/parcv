@@ -24,5 +24,6 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+  Child = ?CHILD(ocv_cli_server, worker),
+  {ok, { {one_for_one, 5, 10}, [Child]} }.
 
