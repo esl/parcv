@@ -1,5 +1,5 @@
 #include <erl_nif.h>
-#include <cv.h>
+#include <opencv/cv.h>
 
 //------------------------------------------------------------------------------
 // Resources
@@ -9,7 +9,7 @@ static ErlNifResourceType* device_res = NULL;
 static ErlNifResourceType* frame_res = NULL;
 
 typedef struct _device_t {
-  CvCapture* _device;
+  struct CvCapture* _device;
 } device_t;
 
 typedef struct _frame_t {
@@ -47,7 +47,7 @@ static ERL_NIF_TERM
 any_device(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
   device_t* dev = enif_alloc_resource(device_res, sizeof(device_t));
-  dev->_device = cvCaptureFrom(CV_CAP_ANY);
+  dev->_device = (struct CvCapture*) cvCaptureFromCAM(-1);
 
   if (!dev->_device) {
     // return {error, no_capture_device}
@@ -76,7 +76,7 @@ new_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
   device_t* dev;
   assert_badarg(enif_get_resource(env, argv[0], device_res, (void**) &dev), env);
   frame_t* frame = enif_alloc_resource(frame_res, sizeof(frame_t));
-  frame->_frame = cvQueryFrame(dev->_device);
+  frame->_frame = (IplImage*) cvQueryFrame(dev->_device);
   return enif_make_tuple2(env, enif_make_atom(env, "ok"), 
 			  enif_make_resource(env, frame));
 }
@@ -86,7 +86,7 @@ free_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
   frame_t* frame;
   assert_badarg(enif_get_resource(env, argv[0], frame_res, (void**) &frame), env);
-  enif_free_resource(dev);
+  enif_free_resource(frame);
   return enif_make_atom(env, "ok");
 }
 
@@ -98,8 +98,8 @@ query_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
   frame_t* frame;
   assert_badarg(enif_get_resource(env, argv[0], device_res, (void**) &dev), env);
   assert_badarg(enif_get_resource(env, argv[1], frame_res, (void**) &frame), env);
-  frame->_frame = cvQueryFrame(dev->_device);
-  return enif_make_tuple2(env, enif_make_atom(env, "ok"));
+  frame->_frame = (IplImage*) cvQueryFrame(dev->_device);
+  return enif_make_atom(env, "ok");
 }
 
 // frame_to_tuple/1 :: (frame) -> {ok, {H, W, NChannels, ImageSize, ImageData}}
@@ -109,12 +109,16 @@ frame_to_tuple(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
   ERL_NIF_TERM result;
   frame_t* frame;
   assert_badarg(enif_get_resource(env, argv[0], frame_res, (void**) &frame), env);
+  ErlNifBinary* imageData;
+  enif_alloc_binary(frame->_frame->imageSize, imageData);
+  memcpy(imageData->data, frame->_frame->imageData, frame->_frame->imageSize);
   result = enif_make_tuple5(env,
-			    enif_make_uint(env, frame->_frame->height),
-			    enif_make_uint(env, frame->_frame->width),
-			    enif_make_uint(env, frame->_frame->nChannels),
-			    enif_make_uint(env, frame->_frame->imageSize),
-			    enif_make_binary(env, &frame->_frame->imageData));
+			    enif_make_int(env, frame->_frame->height),
+			    enif_make_int(env, frame->_frame->width),
+			    enif_make_int(env, frame->_frame->nChannels),
+			    enif_make_int(env, frame->_frame->imageSize),
+			    enif_make_binary(env, imageData));
+  enif_free(imageData);
   return result;
 }
 
