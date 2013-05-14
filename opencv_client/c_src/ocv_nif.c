@@ -52,7 +52,8 @@ static ERL_NIF_TERM
 any_device(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
   device_t* dev = enif_alloc_resource(device_res, sizeof(device_t));
-  dev->_device = (struct CvCapture*) cvCaptureFromCAM(-1);
+
+  dev->_device = (struct CvCapture*) cvCaptureFromCAM(CV_CAP_ANY);
 
   if (!dev->_device) {
     // return {error, no_capture_device}
@@ -102,16 +103,20 @@ frame_to_tuple(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
   if (!enif_get_resource(env, argv[0], frame_res, (void**) &frame)) {
     return enif_make_badarg(env);
   }
-  ErlNifBinary* imageData;
-  enif_alloc_binary(frame->_frame->imageSize, imageData);
-  memcpy(imageData->data, frame->_frame->imageData, frame->_frame->imageSize);
+  ERL_NIF_TERM* arr = 
+    (ERL_NIF_TERM*) malloc(sizeof(ERL_NIF_TERM) * frame->_frame->imageSize);
+  int i;
+  for (i = 0; i < frame->_frame->imageSize; i++) {
+    arr[i] = enif_make_int(env, frame->_frame->imageData[i]);
+  }
+  ERL_NIF_TERM list = 
+    enif_make_list_from_array(env, arr, frame->_frame->imageSize);
   result = enif_make_tuple5(env,
-			    enif_make_int(env, frame->_frame->height),
 			    enif_make_int(env, frame->_frame->width),
+			    enif_make_int(env, frame->_frame->height),
 			    enif_make_int(env, frame->_frame->nChannels),
 			    enif_make_int(env, frame->_frame->imageSize),
-			    enif_make_binary(env, imageData));
-  enif_free(imageData);
+			    list);
   return result;
 }
 
@@ -122,4 +127,4 @@ static ErlNifFunc nif_funcs[] = {
   {"frame_to_tuple", 1, frame_to_tuple}
 };
 
-ERL_NIF_INIT(ocv_c, nif_funcs, load, NULL, NULL, NULL)
+ERL_NIF_INIT(ocv_nif, nif_funcs, load, NULL, NULL, NULL)
