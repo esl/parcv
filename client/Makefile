@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-Wall -fPIC -shared -g -I/usr/lib/erlang/erts-5.10.1/include `pkg-config --cflags --libs opencv`
+#CFLAGS=-Wall -fPIC -shared -g -I/usr/lib/erlang/erts-5.10.1/include `pkg-config --cflags --libs opencv` #R16
+CFLAGS=-Wall -fPIC -shared -g -I/usr/lib/erlang/erts-5.9.3.1/include `pkg-config --cflags --libs opencv` #R15B03-1
 
 all: camgrab_nif
 
