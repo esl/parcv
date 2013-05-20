@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-Wall -pedantic `pkg-config --cflags --libs opencv`
+CFLAGS=-Wall -pedantic -g `pkg-config --cflags --libs opencv`
+#CFLAGS=-Wall -pedantic -I/usr/local/include/opencv -I/usr/local/include
 
 all: filter camfilter 
 
