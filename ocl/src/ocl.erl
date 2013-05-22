@@ -75,16 +75,16 @@ test_src() ->
   "}\n".
 
 gen_n(0, A) -> lists:reverse(A);
-gen_n(N, A) -> gen_n(N-1, [1.0|A]).
+gen_n(N, A) -> gen_n(N-1, [2.0|A]).
 
 test_buff_1() ->
-  gen_n(1024*1024,[]).
+  gen_n(4*4,[]).
 
 test_buff_2() ->
-  gen_n(1024,[]).
+  gen_n(4,[]).
 
 test_buff_3() ->
-  gen_n(1024,[]).
+  gen_n(4,[]).
 
 test() ->
   {ok, P} = get_platform_ids(),
@@ -94,17 +94,17 @@ test() ->
   {ok, Fb0} = create_float_buffer(C, test_buff_1()),
   {ok, Fb1} = create_float_buffer(C, test_buff_2()),
   {ok, Fb2} = create_float_buffer(C, test_buff_3()),
-  {ok, Fa0} = create_float_array(1024),
+  {ok, Fa0} = create_float_array(4),
   {ok, Prg} = create_program(C, D, test_src()),
   {ok, K} = create_kernel(D, Prg, "matvecmult_kern"),
-  ok = set_kernel_arg(K, 0, cl_uint, 1024),
+  ok = set_kernel_arg(K, 0, cl_uint, 4),
   ok = set_kernel_arg(K, 1, cl_mem, Fb0),
   ok = set_kernel_arg(K, 2, cl_mem, Fb1),
   ok = set_kernel_arg(K, 3, cl_mem, Fb2),
-  {ok, E1} = enqueue_nd_range_kernel(CQ, K, 1, [1024], [16]),
-  {ok, E2} = enqueue_read_buffer(CQ, Fb2, true, 0, 1024*4, Fa0),
+  {ok, E1} = enqueue_nd_range_kernel(CQ, K, 1, [4], [1]),
+  {ok, E2} = enqueue_read_buffer(CQ, Fb2, true, 0, 4*4, Fa0),
   ok = wait_for_events([E1, E2]),
-  ok = print_float_array(Fa0, 1024).
+  ok = print_float_array(Fa0, 4).
 
 
   
