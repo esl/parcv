@@ -107,7 +107,7 @@ make_error(ErlNifEnv* e)
 static ERL_NIF_TERM
 make_epiphany_error(ErlNifEnv* e)
 {
-  return enif_make_atom(e, "ephiphany_error");
+  return enif_make_atom(e, "epiphany_error");
 }
 
 static ERL_NIF_TERM
@@ -260,7 +260,8 @@ acquire_command_queue(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
 
   int err;
   cl_command_queue cmdq = clCreateCommandQueue(context[0], device[0], 0, &err);
-  cl_command_queue* cmdqp = enif_alloc_resource(command_queue_r, sizeof(cl_command_queue));
+  cl_command_queue* cmdqp = 
+    enif_alloc_resource(command_queue_r, sizeof(cl_command_queue));
   *cmdqp = cmdq;
   
   return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, cmdqp));
@@ -274,6 +275,7 @@ create_float_array(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
     return enif_make_badarg(e);
   }
   float* arr = (float*) enif_alloc_resource(float_arr_r, sizeof(float)*len);
+  memset(arr, 2.0, sizeof(float)*len);
   return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, arr));
 }
 
@@ -314,23 +316,28 @@ create_float_buffer(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
     return enif_make_badarg(e);
   }
 
-  float* arr = (float*) malloc(sizeof(float)*len);
+  // double ??
+  double* arr_d = (double*) malloc(sizeof(double)*len);
+  float* arr_f = (float*) malloc(sizeof(float)*len);
 
   int i = 0;
   while(enif_get_list_cell(e, list, &hd, &tl)) {
-    if (!enif_get_double(e, hd, &arr[i])) {
+    if (!enif_get_double(e, hd, &arr_d[i])) {
       return enif_make_badarg(e);
     }
+    arr_f[i] = (float) arr_d[i];
     i++;
     list = tl;
   }
+  
+  free(arr_d);
 
   int err;
-  cl_mem* bufp = enif_alloc_resource(mem_r, sizeof(cl_mem));  
-  cl_mem buf = clCreateBuffer(context[0],CL_MEM_USE_HOST_PTR,len*sizeof(float),(float*)arr,&err);
-  *bufp = buf;
+  cl_mem* memp = enif_alloc_resource(mem_r, sizeof(cl_mem));  
+  cl_mem mem = clCreateBuffer(context[0],CL_MEM_USE_HOST_PTR,len*sizeof(float),(float*)arr_f,&err);
+  *memp = mem;
 
-  return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, bufp));
+  return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, memp));
 }
 
 static ERL_NIF_TERM
@@ -503,11 +510,11 @@ enqueue_read_buffer(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
 {
   // printf("Enqueueing read buffer start\n");
   cl_command_queue* cmdqp;
-  if (!enif_get_resource(e, argv[0], command_queue_r, (void**) cmdqp)) {
+  if (!enif_get_resource(e, argv[0], command_queue_r, (void**) &cmdqp)) {
     enif_make_badarg(e);
   }
   cl_mem* mem;
-  if (!enif_get_resource(e, argv[1], mem_r, (void**) mem)) {
+  if (!enif_get_resource(e, argv[1], mem_r, (void**) &mem)) {
     enif_make_badarg(e);
   }
 
