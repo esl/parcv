@@ -74,17 +74,17 @@ test_src() ->
   "   c[i] = aa[i*n+i];\n" ++ 
   "}\n".
 
-gen_n(0, A) -> lists:reverse(A);
-gen_n(N, A) -> gen_n(N-1, [2.0|A]).
+gen_n(0, I, A) -> lists:reverse(A);
+gen_n(N, I, A) -> gen_n(N-1, I, [I|A]).
 
 test_buff_1() ->
-  gen_n(4*4,[]).
+  gen_n(4*4,0.5,[]).
 
 test_buff_2() ->
-  gen_n(4,[]).
+  gen_n(4,2.0,[]).
 
 test_buff_3() ->
-  gen_n(4,[]).
+  gen_n(4,0.0,[]).
 
 test() ->
   {ok, P} = get_platform_ids(),
@@ -101,7 +101,7 @@ test() ->
   ok = set_kernel_arg(K, 1, cl_mem, Fb0),
   ok = set_kernel_arg(K, 2, cl_mem, Fb1),
   ok = set_kernel_arg(K, 3, cl_mem, Fb2),
-  {ok, E1} = enqueue_nd_range_kernel(CQ, K, 1, [4], [1]),
+  {ok, E1} = enqueue_nd_range_kernel(CQ, K, 1, [16], [4]),
   {ok, E2} = enqueue_read_buffer(CQ, Fb2, true, 0, 4*4, Fa0),
   ok = wait_for_events([E1, E2]),
   ok = print_float_array(Fa0, 4).

@@ -117,36 +117,82 @@ make_ok(ErlNifEnv* e)
 }
 
 static int
-get_event_list(ErlNifEnv* e, ERL_NIF_TERM list, cl_event* arr, unsigned len)
+get_float_list(ErlNifEnv* e, ERL_NIF_TERM list, float* arr, unsigned len)
 {
   ERL_NIF_TERM hd, tl;
 
-  cl_event** arr0 = (cl_event**) malloc(sizeof(cl_event*)*len);
-  arr = (cl_event*) malloc(sizeof(cl_event)*len);
+  double* tmp = (double*) malloc(sizeof(double)*len);
 
   int i = 0;
   while(enif_get_list_cell(e, list, &hd, &tl)) {
-    if (!enif_get_resource(e, hd, event_r, (void**) &arr0[i])) {
+    if (!enif_get_double(e, hd, &tmp[i])) {
       return -1;
     }
     i++;
     list = tl;
   }
 
-  int j;
-  for(j = 0; j < len; j++) {
-    arr[j] = arr0[j][0];
+  for(i = 0; i < len; i++)  {
+    arr[i] = (float) tmp[i];
+    printf("arr[%d] = %f\n", i, arr[i]);
   }
 
   return 0;
 }
 
 static int
-get_uint_list(ErlNifEnv* e, ERL_NIF_TERM list, unsigned* arr, unsigned len)
+get_event_list(ErlNifEnv* e, ERL_NIF_TERM list, cl_event* arr, unsigned len)
 {
+  printf("Getting event list\n");
+
   ERL_NIF_TERM hd, tl;
 
-  arr = (unsigned*) malloc(sizeof(unsigned)*len);
+  cl_event** event_rs = (cl_event**) malloc(sizeof(cl_event*));
+
+  int i = 0;
+  while(enif_get_list_cell(e, list, &hd, &tl)) {
+    if (!enif_get_resource(e, hd, event_r, (void**) &event_rs[i])) {
+      return -1;
+    }
+    arr[i] = event_rs[i][0];
+    i++;
+    list = tl;
+  }
+  
+  free(event_rs);
+
+  for (i = 0; i < len; i++) {
+    int ret, err;
+    err = clGetEventInfo(arr[i],CL_EVENT_COMMAND_EXECUTION_STATUS,sizeof(cl_int),
+			 &ret, NULL);
+    switch (ret) {
+    case CL_QUEUED:
+      printf("Command was queued\n");
+      break;
+    case CL_SUBMITTED:
+      printf("Command was submitted\n");
+      break;
+    case CL_RUNNING:
+      printf("Command is running\n");
+      break;
+    case CL_COMPLETE:
+      printf("Command is complete\n");
+      break;
+    default:
+      printf("error: command abnormally terminated\n");
+      break;
+    }
+  }
+
+  printf("Got event list\n");
+
+  return 0;
+}
+
+static int
+get_uint_list(ErlNifEnv* e, ERL_NIF_TERM list, size_t* arr, unsigned len)
+{
+  ERL_NIF_TERM hd, tl;
 
   int i = 0;
   while(enif_get_list_cell(e, list, &hd, &tl)) {
@@ -155,6 +201,10 @@ get_uint_list(ErlNifEnv* e, ERL_NIF_TERM list, unsigned* arr, unsigned len)
     }
     i++;
     list = tl;
+  }
+
+  for(i = 0; i < len; i++)  {
+    printf("arr[%d] = %d\n", i, arr[i]);
   }
 
   return 0;
@@ -171,9 +221,13 @@ get_platform_ids(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
   cl_platform_id* platforms;
   cl_platform_id platform;
 
-  clGetPlatformIDs(0,0,&nplatforms);
+  if (clGetPlatformIDs(0,0,&nplatforms) != CL_SUCCESS)
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "cl_invalid_value"));
+
   platforms = (cl_platform_id*) malloc(nplatforms*sizeof(cl_platform_id));
-  clGetPlatformIDs(nplatforms, platforms, 0);
+
+  if (clGetPlatformIDs(nplatforms, platforms, 0) != CL_SUCCESS)
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "cl_invalid_value"));
 
   int i;
   for (i = 0; i < nplatforms; i++) {
@@ -207,9 +261,13 @@ acquire_device(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
     return enif_make_badarg(e);
   }
 
-  clGetDeviceIDs(platform[0], CL_DEVICE_TYPE_ACCELERATOR,0,0,&ndevices);
+  if (clGetDeviceIDs(platform[0], CL_DEVICE_TYPE_ACCELERATOR,0,0,&ndevices) != CL_SUCCESS)
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "device_failure"));
+
   devices = (cl_device_id*)malloc(ndevices*sizeof(cl_device_id));
-  clGetDeviceIDs(platform[0], CL_DEVICE_TYPE_ACCELERATOR,ndevices,devices,0);
+
+  if (clGetDeviceIDs(platform[0], CL_DEVICE_TYPE_ACCELERATOR,ndevices,devices,0) != CL_SUCCESS)
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "device_failure"));
   
   if (ndevices) 
     dev = devices[0];
@@ -224,6 +282,8 @@ acquire_device(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
 
 static ERL_NIF_TERM
 acquire_context(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
+  printf("Acquiring context\n");
+
   cl_platform_id* platform;
   cl_device_id* device;
   if (!enif_get_resource(e, argv[0], platform_r, (void**) &platform)) {
@@ -242,6 +302,9 @@ acquire_context(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
   int err;
   cl_context* ctxt = enif_alloc_resource(context_r, sizeof(cl_context));
   *ctxt = clCreateContext(ctxtprop, 1, &(device[0]), 0, 0, &err);
+  
+  if (err != CL_SUCCESS)
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "context_fail"));
 
   return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, ctxt));
 }
@@ -249,6 +312,8 @@ acquire_context(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
 static ERL_NIF_TERM
 acquire_command_queue(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
 {
+  printf("Acquiring command queue\n");
+
   cl_context* context;
   cl_device_id* device;
   if (!enif_get_resource(e, argv[0], context_r, (void**) &context)) {
@@ -263,6 +328,9 @@ acquire_command_queue(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
   cl_command_queue* cmdqp = 
     enif_alloc_resource(command_queue_r, sizeof(cl_command_queue));
   *cmdqp = cmdq;
+
+  if (err != CL_SUCCESS)
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "command_queue_fail"));
   
   return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, cmdqp));
 }
@@ -275,7 +343,7 @@ create_float_array(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
     return enif_make_badarg(e);
   }
   float* arr = (float*) enif_alloc_resource(float_arr_r, sizeof(float)*len);
-  memset(arr, 2.0, sizeof(float)*len);
+  memset(arr, 0.0, sizeof(float)*len);
   return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, arr));
 }
 
@@ -308,34 +376,24 @@ create_float_buffer(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
     return enif_make_badarg(e);
   }
 
-  ERL_NIF_TERM list = argv[1];
   unsigned int len;
-  ERL_NIF_TERM hd, tl;
-
-  if (!enif_get_list_length(e, list, &len)) {
+  if (!enif_get_list_length(e, argv[1], &len)) {
     return enif_make_badarg(e);
   }
 
-  // double ??
-  double* arr_d = (double*) malloc(sizeof(double)*len);
-  float* arr_f = (float*) malloc(sizeof(float)*len);
-
-  int i = 0;
-  while(enif_get_list_cell(e, list, &hd, &tl)) {
-    if (!enif_get_double(e, hd, &arr_d[i])) {
-      return enif_make_badarg(e);
-    }
-    arr_f[i] = (float) arr_d[i];
-    i++;
-    list = tl;
+  float* arr = (float*) malloc(sizeof(float)*len);
+  if (get_float_list(e, argv[1], arr, len) != 0) {
+    return enif_make_badarg(e);
   }
-  
-  free(arr_d);
 
   int err;
   cl_mem* memp = enif_alloc_resource(mem_r, sizeof(cl_mem));  
-  cl_mem mem = clCreateBuffer(context[0],CL_MEM_USE_HOST_PTR,len*sizeof(float),(float*)arr_f,&err);
-  *memp = mem;
+  memp[0] = clCreateBuffer(context[0],CL_MEM_USE_HOST_PTR,len*sizeof(float),arr,&err);
+
+  free(arr);
+
+  if (err != CL_SUCCESS)
+    return enif_make_tuple(e, make_error(e), enif_make_atom(e, "create_buffer_failure"));
 
   return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, memp));
 }
@@ -371,11 +429,13 @@ create_program(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
 
   int err;
   cl_program* prgp = enif_alloc_resource(program_r, sizeof(cl_program));
-  cl_program prg = clCreateProgramWithSource(context[0], 1, (const char**)&src, &src_sz, &err);
+  prgp[0] = clCreateProgramWithSource(context[0], 1, (const char**)&src, &src_sz, &err);
 
-  clBuildProgram(prg,1,&(device[0]),0,0,0);
+  if (err != CL_SUCCESS)
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "create_program_failure"));
 
-  *prgp = prg;
+  if (clBuildProgram(prgp[0],1,&device[0],0,0,0) != CL_SUCCESS)
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "build_program_failure"));
 
   return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, prgp));
 }
@@ -402,8 +462,24 @@ create_kernel(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
 
   int err;
   cl_kernel* kernel = enif_alloc_resource(kernel_r, sizeof(cl_kernel));
-  cl_kernel krn = clCreateKernel(program[0], buf, &err);
-  *kernel = krn;
+  kernel[0] = clCreateKernel(program[0], "matvecmult_kern", &err);
+
+  switch (err) {
+  case CL_INVALID_PROGRAM:
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "invalid_program"));
+  case CL_INVALID_PROGRAM_EXECUTABLE:
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "invalid_program_executable"));
+  case CL_INVALID_KERNEL_NAME:
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "invalid_kernel_name"));
+  case CL_INVALID_KERNEL_DEFINITION:
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "invalid_kernel_definition"));
+  case CL_INVALID_VALUE:
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "invalid_value"));
+  case CL_OUT_OF_HOST_MEMORY:
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "out_of_host_memory"));
+  }
+
+  printf("kernel valid\n");
   
   return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, kernel));
 }
@@ -444,7 +520,9 @@ set_kernel_arg(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
       return enif_make_badarg(e);
     }
 
-    clSetKernelArg(kernel[0], i, sizeof(cl_uint), &x);
+    if (clSetKernelArg(kernel[0], i, sizeof(cl_uint), &x) != CL_SUCCESS)
+      return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "set_kernel_arg_failure"));
+
     return make_ok(e);
   } else if (strcmp(buf, "cl_mem") == 0) {
     cl_mem* mem;
@@ -452,7 +530,9 @@ set_kernel_arg(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
       return enif_make_badarg(e);
     }
 
-    clSetKernelArg(kernel[0], i, sizeof(cl_mem), &mem[0]);
+    if (clSetKernelArg(kernel[0], i, sizeof(cl_mem), &mem[0]) != CL_SUCCESS)
+      return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "set_kernel_arg_failure"));
+
     return make_ok(e);
   } else {
     printf("strcmp failed\n");
@@ -464,45 +544,44 @@ static ERL_NIF_TERM
 enqueue_nd_range_kernel(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
 {
   cl_command_queue* cmdqp;
-  cl_kernel* kernel;
-  unsigned work_dim;
   if (!enif_get_resource(e, argv[0], command_queue_r, (void**) &cmdqp)) {
     return enif_make_badarg(e);
   }
+
+  cl_kernel* kernel;
   if (!enif_get_resource(e, argv[1], kernel_r, (void**) &kernel)) {
     return enif_make_badarg(e);
   }
+
+  unsigned work_dim;
   if (!enif_get_uint(e, argv[2], &work_dim)) {
     return enif_make_badarg(e);
   }
 
-  unsigned global_work_size_len, local_work_size_len;
-  if (!enif_get_list_length(e, argv[3], &global_work_size_len)) {
+  unsigned glen, llen;
+  if (!enif_get_list_length(e, argv[3], &glen)) {
     return enif_make_badarg(e);
   }
-  if (!enif_get_list_length(e, argv[4], &local_work_size_len)) {
-    return enif_make_badarg(e);
-  }
-
-  unsigned* global_work_size;
-  if (get_uint_list(e, argv[3], global_work_size, global_work_size_len) != 0) {
+  if (!enif_get_list_length(e, argv[4], &llen)) {
     return enif_make_badarg(e);
   }
 
-  unsigned* local_work_size;
-  if (get_uint_list(e, argv[4], local_work_size, local_work_size_len) != 0) {
+  size_t* gsize = (size_t*) malloc(sizeof(size_t)*glen);
+  if (get_uint_list(e, argv[3], gsize, glen) != 0) {
     return enif_make_badarg(e);
   }
 
-  cl_event event;
-  clEnqueueNDRangeKernel(cmdqp[0], kernel[0], work_dim, 0,
-			 global_work_size, local_work_size,
-			 0,0,&event);
+  size_t* lsize = (size_t*) malloc(sizeof(size_t)*llen);
+  if (get_uint_list(e, argv[4], lsize, llen) != 0) {
+    return enif_make_badarg(e);
+  }
 
-  cl_event* evt = (cl_event*) enif_alloc_resource(event_r, sizeof(cl_event));
-  *evt = event;
+  cl_event* event = (cl_event*) enif_alloc_resource(event_r, sizeof(cl_event));
+  if (clEnqueueNDRangeKernel(cmdqp[0],kernel[0],work_dim,0,gsize,lsize,
+			     0,0,&event[0]) != CL_SUCCESS)
+    return enif_make_badarg(e);
 
-  return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, evt));
+  return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, event));
 }
 
 static ERL_NIF_TERM
@@ -545,18 +624,22 @@ enqueue_read_buffer(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
 
   cl_event* event;
   if (strcmp(buf, "true") == 0) {
-    //  printf("Enqueueing read buffer true\n");
     event = (cl_event*) enif_alloc_resource(event_r, sizeof(cl_event));
-    cl_event evt;
-    clEnqueueReadBuffer(cmdqp[0], mem[0], CL_TRUE, offset, cb, arr, 0, 0, &evt);
-    *event = evt;
+
+    if (clEnqueueReadBuffer(cmdqp[0], mem[0], CL_TRUE, offset, cb, 
+			    arr, 0, 0, &event[0]) != CL_SUCCESS) {
+      return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "error_read_buffer"));
+    }
+
     return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, event));
   } else if (strcmp(buf, "false") == 0) {
-    //    printf("Enqueueing read buffer false\n");
     event = (cl_event*) enif_alloc_resource(event_r, sizeof(cl_event));
-    cl_event evt;
-    clEnqueueReadBuffer(cmdqp[0], mem[0], CL_FALSE, offset, cb, arr, 0, 0, &evt);
-    *event = evt;
+
+    if (clEnqueueReadBuffer(cmdqp[0], mem[0], CL_FALSE, offset, cb, 
+			    arr, 0, 0, &event[0]) != CL_SUCCESS) {
+      return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "error_read_buffer"));
+    }
+
     return enif_make_tuple2(e, make_ok(e), enif_make_resource(e, event));
   } else {
     return enif_make_badarg(e);
@@ -571,14 +654,23 @@ wait_for_events(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[])
     return enif_make_badarg(e);
   }
   
-  cl_event* events;
+  cl_event* events = (cl_event*) malloc(sizeof(cl_event)*len);
   if (get_event_list(e, argv[0], events, len) != 0) {
     return enif_make_badarg(e);
   }
   
   printf("Waiting on %d events\n", len);
 
-  clWaitForEvents(len, events);
+  cl_int err = clWaitForEvents(len, events);
+
+  switch (err) {
+  case CL_INVALID_VALUE: 
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "invalid_value"));
+  case CL_INVALID_CONTEXT: 
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "invalid_context"));
+  case CL_INVALID_EVENT: 
+    return enif_make_tuple2(e, make_error(e), enif_make_atom(e, "invalid_event"));
+  }
 
   printf("Waiting on events succeeded\n");
 
