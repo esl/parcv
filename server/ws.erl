@@ -112,7 +112,8 @@ loop(Socket) ->
 manage_clients(Sockets) ->
     receive
         {message, Msg} ->
-            send_data(Sockets, Msg);
+            send_data(Sockets, Msg),
+            manage_clients(Sockets);
 		{connect, Socket} ->
             io:format("Socket connected: ~w~n", [Socket]),
             manage_clients([Socket | Sockets]);
