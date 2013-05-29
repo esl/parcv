@@ -15,7 +15,9 @@ start() ->
                                          {active, true}]),
 
     Pid2 = spawn(fun() -> par_connect(Listen) end),
-    register(backend_acceptor, Pid2).
+    register(backend_acceptor, Pid2),
+
+    Pid.
     
 stop() ->
     case whereis(backend_acceptor) of
@@ -109,14 +111,16 @@ loop(Socket) ->
 
 manage_clients(Sockets) ->
     receive
-		  {connect, Socket} ->
+        {message, Msg} ->
+            send_data(Sockets, Msg);
+		{connect, Socket} ->
             io:format("Socket connected: ~w~n", [Socket]),
             manage_clients([Socket | Sockets]);
         {disconnect, Socket} ->
             io:format("Socket disconnected: ~w~n", [Socket]),
             manage_clients(lists:delete(Socket, Sockets));
         {data, User, Data} ->
-				User,
+			User,
             send_data(Sockets, Data),
             manage_clients(Sockets);
         stop ->
