@@ -1,0 +1,292 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <CL/cl.h>
+
+typedef struct bitmap_t {
+  short _id;
+  int   _size;
+  short _data1;
+  short _data2;
+  int   _offset;
+  char* _pixels;
+};
+
+static cl_uint nplatforms;
+static cl_uint ndevices;
+static cl_platform_id* platforms;
+static cl_platform_id  platform;
+static cl_device_id* devices;
+static cl_device_id dev;
+static cl_context ctx;
+static cl_command_queue cmdq;
+
+static cl_context_properties ctxprop[3] = {
+  (cl_context_properties) CL_CONTEXT_PLATFORM,
+  (cl_context_properties) platform,
+  (cl_context_properties) 0
+};
+
+//------------------------------------------------------------------------------
+void initialize()
+{
+  // Indices
+  int i;
+
+  // Initialize platform
+  clGetPlatformIDs(0,0,&nplatforms);
+  platforms = (cl_platform_id*) malloc(nplatforms*sizeof(cl_platform_id));
+  clGetPlatformIDs(nplatforms, platforms, 0);
+  
+  char buffer[256];
+  for (i = 0; i < nplatforms; i++) {
+    platform = platforms[i];
+    clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 256, buffer, 0);
+    if (!strcmp(buffer, "coprthr-e"))
+      break;
+  }
+
+  if (i < nplatforms)
+    platform = platforms[i];
+  else
+    exit(1);
+
+  // Initialize devices
+  clGetDeviceIDs(platform, CL_DEVICE_TYPE_ACCELERATOR, 0, 0, &ndevices);
+  devices = (cl_device_id*) malloc(ndevices*sizeof(cl_device_id));
+  clGetDeviceIDs(platform, CL_DEVICE_TYPE_ACCELERATOR, ndevices, devices, 0);
+  
+  if (ndevices)
+    dev = devices[0];
+  else
+    exit(1);
+
+  // Initialize context
+  ctx = clCreateContext(ctxprop, 1, &dev, 0, 0, &err);
+  cmdq = clCreateCommandQueue(ctx, dev, 0, &err);
+
+  // Initialize program
+  prg = clCreateProgramWithSource(ctx, 1, (const char**) &src, &src_sz, &err);
+  clBuildProgram(prg, 1, &dev, 0, 0, 0);
+
+  return 0;
+}
+
+int teardown()
+{
+  clReleaseProgram(prg);
+  clReleaseCommandQueue(cmdq);
+  clReleaseContext(ctx);
+
+  free(devices);
+  free(platforms);
+
+  return 0;
+}
+
+//------------------------------------------------------------------------------
+// Sobel row pass
+//------------------------------------------------------------------------------
+int sobelRowPass(unsigned char* src, int src_w, int src_h, 
+		 int* dx, int* dy) {
+  size_t src_sz = src_w * src_h * sizeof(unsigned char);
+  size_t dx_sz = src_w * src_h * sizeof(int);
+  size_t dy_sz = src_w * src_h * sizeof(int);
+
+  dx = (int*) malloc(src_w * src_h * sizeof(int));
+  dy = (int*) malloc(src_w * src_h * sizeof(int));
+
+  cl_mem src_buf = clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR, src_sz, src, &err);
+  cl_mem dx_buf = clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR, dx_sz, dx, &err);
+  cl_mem dy_buf = clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR, dy_sz, dy, &err);
+
+  krn = clCreateKernel(prg, "calcSobelRowPass", &err);
+
+  clSetKernelArg(krn, 0, sizeof(cl_mem), &src_buf);
+  clSetKernelArg(krn, 1, sizeof(cl_mem), &dx_buf);
+  clSetKernelArg(krn, 2, sizeof(cl_mem), &dy_buf);
+  clSetKernelArg(krn, 3, sizeof(int), &src_w);
+  clSetKernelArg(krn, 4, sizeof(int), &src_h);
+  clSetKernelArg(krn, 5, sizeof(int), 1);
+  clSetKernelArg(krn, 6, sizeof(int), 0);
+  clSetKernelArg(krn, 7, sizeof(int), 1);
+  clSetKernelArg(krn, 8, sizeof(int), 0);
+  clSetKernelArg(krn, 9, sizeof(int), 1);
+  clSetKernelArg(krn, 10, sizeof(int), 0);
+  
+  size_t gtdsz[] = { src_w, src_h, 1 };
+  size_t gtdsz[] = { 16, 16, 1 };
+
+  cl_event ev[2];
+
+  clEnqueueNDRangeKernel(cmdq, krn, 1, 0, gtdsz, ltdsz, 0, 0, &ev[0]);
+  clEnqueueReadBuffer(cmdq, c_buf, CL_TRUE, 0, c_buf_sz, c, 0, 0, &ev[1]); 
+
+  err = clWaitForEvents(2, ev);
+
+  clReleaseEvent(ev[1]);
+  clReleaseEvent(ev[0]);
+  clReleaseKernel(krn);
+
+  return 0;
+}
+
+//------------------------------------------------------------------------------
+// calcMagnitude
+//------------------------------------------------------------------------------
+int calcMagnitude(unsigned char* src, int src_w, int src_h, 
+		  int* dxd, int* dyd, float* mag) 
+{
+  size_t dxd_sz = src_w * src_h * sizeof(int);
+  size_t dyd_sz = src_w * src_h * sizeof(int);
+  size_t mag_sz = src_w * src_h * sizeof(float);
+
+  dxd = (int*) malloc(src_w * src_h * sizeof(int));
+  dyd = (int*) malloc(src_w * src_h * sizeof(int));
+  mag = (float*) malloc(src_w * src_h * sizeof(float));
+
+  cl_mem dxd_buf = 
+    clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR, dxd_sz, dxd, &err);
+  cl_mem dyd_buf = 
+    clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR, dyd_sz, dyd, &err);
+  cl_mem mag_buf = clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR, mag_sz, mag, &err);
+
+  krn = clCreateKernel(prg, "calcMagnitude_buf", &err);
+
+  clSetKernelArg(krn, 0, sizeof(cl_mem), &dx_buf);
+  clSetKernelArg(krn, 1, sizeof(cl_mem), &dy_buf);
+  clSetKernelArg(krn, 2, sizeof(cl_mem), &dxd_buf);
+  clSetKernelArg(krn, 4, sizeof(cl_mem), &dyd_buf);
+  clSetKernelArg(krn, 5, sizeof(cl_mem), &mag_buf);
+  clSetKernelArg(krn, 6, sizeof(int), src_w);
+  clSetKernelArg(krn, 7, sizeof(int), src_h);
+  clSetKernelArg(krn, 8, sizeof(int), 1);
+  clSetKernelArg(krn, 9, sizeof(int), 0);
+  clSetKernelArg(krn, 10, sizeof(int), 1);
+  clSetKernelArg(krn, 11, sizeof(int), 0);
+  clSetKernelArg(krn, 12, sizeof(int), 1);
+  clSetKernelArg(krn, 13, sizeof(int), 0);
+  clSetKernelArg(krn, 14, sizeof(int), 1);
+  clSetKernelArg(krn, 15, sizeof(int), 0);
+  clSetKernelArg(krn, 16, sizeof(int), 1);
+  clSetKernelArg(krn, 17, sizeof(int), 0);
+  
+  size_t gtdsz[] = { src_w, src_h, 1 };
+  size_t gtdsz[] = { 16, 16, 1 };
+
+  cl_event ev[2];
+
+  clEnqueueNDRangeKernel(cmdq, krn, 1, 0, gtdsz, ltdsz, 0, 0, &ev[0]);
+  clEnqueueReadBuffer(cmdq, c_buf, CL_TRUE, 0, c_buf_sz, c, 0, 0, &ev[1]); 
+
+  err = clWaitForEvents(2, ev);
+
+  clReleaseEvent(ev[1]);
+  clReleaseEvent(ev[0]);
+  clReleaseKernel(krn);
+
+  return 0;
+}
+
+// int calcMap()
+// int 
+
+int canny(unsigned char* src, int src_w, int src_h) {
+  int* dx;
+  int* dy;
+
+  sobelRowPass(src, src_w, src_h, dx, dy);
+
+  //int* dxd;
+  //int* dyd;
+  //float* mag;
+  
+  //calcMagnitude(src, src_w, src_h, dxd, dyd, mag);
+
+  return 0;
+}
+
+int file_size(FILE* in, int* len) 
+{
+  fseek(in, 0L, SEEK_END);
+  len = ftell(in);
+  fseek(in, 0L, SEEK_SET);
+  return 0;
+}
+
+int read_bitmap(bitmap_t* bmp, const char* path) 
+{
+  FILE* in = fopen(path, "rb");
+
+  if (in == NULL) {
+    printf("fopen failed");
+    return -1;
+  }
+
+  if (file_size(in, &len) == 0) {
+    printf("file_size == 0");
+    return -2;
+  }
+
+  char bmp_size[4];
+  char bmp_data1[2];
+  char bmp_data2[2];
+  char bmp_offset[4];
+
+  fread(&bmp->id, 1, 2, in);
+  fread(&bmp_size, 1, 4, in);
+  fread(&bmp->data1, 1, 2, in);
+  fread(&bmp->data2, 1, 2, in);
+  fread(&bmp_offset, 1, 4, in);
+
+  int size_b0 = (int) bmp_size[0] >> 24;
+  int size_b1 = (int) bmp_size[1] >> 16;
+  int size_b2 = (int) bmp_size[2] >> 8;
+  int size_b3 = (int) bmp_size[3];
+  bmp->size = 0 | size_b0 | size_b1 | size_b2 | size_b3;
+
+  printf("bitmap size = %d\n", bmp->size);
+
+  int offset_b0 = (int) bmp_offset[0] >> 24;
+  int offset_b1 = (int) bmp_offset[1] >> 16;
+  int offset_b2 = (int) bmp_offset[2] >> 8;
+  int offset_b3 = (int) bmp_offset[3];
+  bmp->offset = 0 | offset_b0 | offset_b1 | offset_b2 | offset_b3;
+
+  printf("bitmap offset = %d\n", bmp->offset);
+
+  bmp->pixels = (unsigned char*) malloc(bmp->size);
+  fread(&bmp->pixels, 1, bmp->size, in);
+
+  return 0;
+}
+
+int main()
+{
+  // load bitmap
+  printf("reading bitmap\n");
+
+  bitmap_t bmp;
+  if (read_bitmap(&bmp, "images/lena256.bmp") != 0)
+    return -1;
+
+  // load opencl source
+  prinf("reading opencl source\n");
+
+  char* ocl_src;
+  if (read_file(ocl_src, "kernels/canny.cl") != 0)
+    return -1;
+
+  printf("executing canny\n");
+  int src_w = 256;
+  int src_h = 256;
+  char* src = bmp.pixels;
+
+  initialize();
+
+  canny(src, src_w, src_h);
+  // hough(src, src_w, src_h);
+
+  teardown();
+
+  return 0;
+}
