@@ -1,0 +1,30 @@
+#!/bin/bash
+#set -x
+
+USER=`whoami`
+HOSTS=(10.151.0.152 10.151.0.153 10.151.0.154 10.151.0.155)
+NAMES=(E_pi1 N_pi2 W_pi3 S_pi4)
+
+case $1 in
+	init)
+		for HOST in $HOSTS
+		do
+			echo Sending public key to $HOST
+			`ssh $HOST "cat >> .ssh/authorized_keys2" < /home/$USER/.ssh/id_rsa.pub`
+			# scp v4l2grab?
+		done
+	;;
+	*)
+		TIME=`date +"%H%M%S"`
+		for i in {0..3}
+		do
+			echo Grabbing frame from ${HOSTS[$i]}
+			ssh ${HOSTS[$i]} "v4l2grab -o tmp.jpg"
+			scp ${HOSTS[$i]}:~/tmp.jpg "${TIME}_${NAMES[$i]}.jpg"
+			ssh ${HOSTS[$i]} "rm tmp.jpg"
+		done
+	;;
+esac
+
+
+#ssh omer@10.151.0.155 "cat >> .ssh/authorized_keys2" < /home/omer/.ssh/id_rsa.pub
