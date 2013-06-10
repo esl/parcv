@@ -11,7 +11,7 @@
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
 %% gen_server state
--record(state, {id, socket, packet_dim, status}).
+-record(state, {id=0, socket, packet_dim, status=disconnected}).
 
 %%------------------------------------------------------------------------------
 start_link() ->
@@ -45,6 +45,7 @@ init([]) ->
 handle_call({connect, Host, Port, PacketDim}, _From, S0) ->
   case gen_tcp:connect(Host, Port, [binary, {packet, 0}, {active, false}, {exit_on_close, false}]) of
     {ok, Sock} ->
+      io:format("Initiating client handshake~n",[]),
       S1 = input_client_handshake(Sock, PacketDim, S0),
       {reply, S1#state.status, S1};
     {error, Reason} ->
@@ -67,6 +68,7 @@ handle_call(disconnect, _From, S0) ->
   end;
 
 handle_call({send_data, Data}, _From, S0) when is_list(Data) ->
+  io:format("Sending data~n",[]),
   case S0#state.status of
     connected ->
       case length(Data) == S0#state.packet_dim of
@@ -107,8 +109,10 @@ input_client_handshake(Sock, PacketDim, S0) ->
   ok = gen_tcp:send(Sock, Header),
   case gen_tcp:recv(Sock, 1) of
     {ok, <<0>>} ->
+      io:format("Received 0 ( success )~n",[]),
       S0#state{socket=Sock, packet_dim=PacketDim, status=connected};
     {ok, <<1>>} ->
+      io:format("Received 1 ( failure )~n",[]),
       ok = gen_tcp:close(Sock),
       S0#state{packet_dim=PacketDim, status=disconnected};
     {error, closed} ->
