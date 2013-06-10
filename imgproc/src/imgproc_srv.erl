@@ -41,7 +41,7 @@ error_from(Sock) ->
 %%------------------------------------------------------------------------------
 
 handle_call({receive_from, Sock, Lim}, _From, S) ->
-  imgproc_info:log(?MODULE, "Spawning input channel", [])
+  imgproc_info:log(?MODULE, "Spawning input channel", []),
   Pid = spawn(fun () -> input_channel(Sock, Lim) end),
   {reply, ok, S};
 handle_call({error_from, _Sock}, _From, S) ->
