@@ -715,7 +715,7 @@ void write_png(const char* filename, const byte* pixels, int src_w, int src_h) {
 // NIF
 //------------------------------------------------------------------------------
 static ERL_NIF_TERM
-nif_initialize(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
+clinit(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
   // get string (main kernel)
   unsigned len;
   if (!enif_get_list_length(e, argv[0], &len)) {
@@ -733,13 +733,13 @@ nif_initialize(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
 }
 
 static ERL_NIF_TERM
-nif_teardown(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
+clteardown(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
   teardown();
   return enif_make_atom(e, "ok");
 }
 
 static ERL_NIF_TERM
-nif_transform(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
+cltransform(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
   // get byte* handle
   byte* image;
   if (!enif_get_resource(e, argv[0], image_r, (void**) image)) {
@@ -763,7 +763,7 @@ nif_transform(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
 }
 
 static ERL_NIF_TERM
-nif_read_png(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
+clread_png(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
   // get filename
   unsigned len;
   if (!enif_get_list_length(e, argv[0], &len)) {
@@ -792,7 +792,7 @@ nif_read_png(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
 }
 
 static ERL_NIF_TERM
-nif_write_png(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
+clwrite_png(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
   // get filename
   unsigned len;
   if (!enif_get_list_length(e, argv[0], &len)) {
@@ -825,11 +825,11 @@ nif_write_png(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
 }
 
 static ErlNifFunc nif_funcs[] = {
-  {"initialize", 1, nif_initialize},
-  {"teardown", 0, nif_teardown},
-  {"transform", 3, nif_transform},
-  {"read_png", 3, nif_read_png},
-  {"write_png", 4, nif_write_png}
+  {"clinitialize", 1, clinitialize},
+  {"clteardown", 0, clteardown},
+  {"cltransform", 3, cltransform},
+  {"clread_png", 3, clread_png},
+  {"clwrite_png", 4, clwrite_png}
 };
 
 ERL_NIF_INIT(imgproc_nif, nif_funcs, load, NULL, NULL, NULL);

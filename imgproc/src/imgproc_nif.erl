@@ -1,7 +1,7 @@
 -module(imgproc_nif).
 
--export([initialize/1, transform/3, teardown/0]).
--export([list_to_image/1, read_png/3, write_png/4]).
+-export([clinitialize/1, cltransform/3, clteardown/0]).
+-export([cllist_to_image/1, clread_png/3, clwrite_png/4]).
 
 -on_load(init/0).
 
@@ -18,22 +18,22 @@ init() ->
 	    end,
   erlang:load_nif("." ++ filename:join(PrivDir, "imgproc_drv"), 0).
 
-initialize(_Kernel) ->
+clinitialize(_Kernel) ->
   ?NIF_STUB.
 
-teardown() ->
+clteardown() ->
   ?NIF_STUB.
 
-transform(_Image, _ImageW, _ImageH) ->
+cltransform(_Image, _ImageW, _ImageH) ->
   ?NIF_STUB.
 
-list_to_image(_List) ->
+cllist_to_image(_List) ->
   ?NIF_STUB.
 
-read_png(_Filename, _ImageW, _ImageH) ->
+clread_png(_Filename, _ImageW, _ImageH) ->
   ?NIF_STUB.
 
-write_png(_Filename, _Image, _ImageW, _ImageH) ->
+clwrite_png(_Filename, _Image, _ImageW, _ImageH) ->
   ?NIF_STUB.
 		
   

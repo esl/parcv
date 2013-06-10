@@ -17,14 +17,14 @@
 start_link() ->
   imgproc_info:log(?MODULE, "Initialising image processing server", []),
   {ok, KernelSrc} = application:get_env(kernel_src),
-  ok = imgproc_nif:initialize(KernelSrc),
+  ok = imgproc_nif:clinitialize(KernelSrc),
   gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init(_) ->
   {ok, #state{}}.
 
 terminate(_, _) ->
-  imgproc_nif:teardown(),
+  imgproc_nif:clteardown(),
   ok.
 
 receive_from(Sock) ->
@@ -90,7 +90,8 @@ input_channel(Sock, Lim) ->
   case gen_tcp:recv(Sock, Lim) of
     {ok, Data} ->
       %% Process data here
-      imgproc_nif:transform(Data, ?IMAGE_WIDTH, ?IMAGE_HEIGHT),
+      Image = imgproc_nif:cllist_to_image(Data),
+      imgproc_nif:cltransform(Image, ?IMAGE_WIDTH, ?IMAGE_HEIGHT),
       input_channel(Sock, Lim);
     {error, closed} ->
       imgproc_info:log(?MODULE, "Closed connection", []),
