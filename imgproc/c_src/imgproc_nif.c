@@ -725,6 +725,7 @@ clinitialize(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
   if (!enif_get_string(e, argv[0], str, len, ERL_NIF_LATIN1)) {
     return enif_make_badarg(e);
   }
+  str[len-1] = '\0';
 
   printf("initialising NIF with %s\n", str);
 
