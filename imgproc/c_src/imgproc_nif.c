@@ -729,7 +729,7 @@ clinitialize(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
 
   printf("initialising NIF with %s\n", str);
 
-  initialize(str);
+  initialize("kernels/edge_detect.cl");
   return enif_make_atom(e, "ok");
 }
 
