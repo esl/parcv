@@ -10,6 +10,8 @@
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 %%------------------------------------------------------------------------------
+-export([receive_from/1, error_from/1]).
+%%------------------------------------------------------------------------------
 
 -record(state, { }).
 
@@ -38,7 +40,7 @@ error_from(Sock) ->
 %%------------------------------------------------------------------------------
 
 handle_call({receive_from, Sock, Lim}, _From, S) ->
-  spawn(imgproc_srv, input_channel, [Sock, Lim]),
+  spawn(fun () -> input_channel(Sock, Lim) end),
   {reply, ok, S};
 handle_call({error_from, _Sock}, _From, S) ->
   {reply, ok, S}.
