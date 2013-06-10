@@ -11,7 +11,7 @@
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
 %% gen_server state
--record(state, {id=0, socket, packet_dim, status=disconnected}).
+-record(state, {id=undefined, socket=undefined, packet_dim=undefined, status=disconnected}).
 
 %%------------------------------------------------------------------------------
 start_link() ->
@@ -47,7 +47,7 @@ handle_call({connect, Host, Port, PacketDim}, _From, S0) ->
     {ok, Sock} ->
       io:format("Initiating client handshake~n",[]),
       S1 = input_client_handshake(Sock, PacketDim, S0),
-      {reply, S1#state.status, S1};
+      {reply, ok, S1};
     {error, Reason} ->
       io:format("error: ~p", [Reason]),
       S1 = S0#state{
@@ -116,5 +116,6 @@ input_client_handshake(Sock, PacketDim, S0) ->
       ok = gen_tcp:close(Sock),
       S0#state{packet_dim=PacketDim, status=disconnected};
     {error, closed} ->
-      S0#state{packet_dim=PacketDim, status=disconnected}
+      S0#state{packet_dim=PacketDim, status=disconnected};
+    _ -> S0
   end.
