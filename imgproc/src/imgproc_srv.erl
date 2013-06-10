@@ -37,6 +37,7 @@ receive_from(Sock) ->
 error_from(Sock) ->
   imgproc_info:log(?MODULE, "Error from socket"),
   gen_server:call(?MODULE, {error_from, Sock}).
+
 %%------------------------------------------------------------------------------
 
 handle_call({receive_from, Sock, Lim}, _From, S) ->
@@ -77,11 +78,11 @@ tcp_accept_loop(LSock) ->
       case Ack of
 	0 ->
 	  imgproc_info:log(?MODULE, "Success - adding camera", []),
-	  gen_tcp:send(Sock, list_to_binary([0])),
+	  ok = gen_tcp:send(Sock, list_to_binary([0])),
 	  imgproc_srv:receive_from(Sock);
 	1 ->
 	  imgproc_info:log(?MODULE, "Error, ack incorrect", []),
-	  gen_tcp:send(Sock, list_to_binary([1])),
+	  ok = gen_tcp:send(Sock, list_to_binary([1])),
 	  imgproc_srv:error_from(Sock)
       end;
     {error, closed} ->
