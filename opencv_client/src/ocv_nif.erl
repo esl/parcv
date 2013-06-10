@@ -18,7 +18,7 @@ init() ->
 	      Path ->
 		Path
 	    end,
-  erlang:load_nif("." ++ filename:join(PrivDir, "ocv_drv"), 0).
+  erlang:load_nif(filename:join(PrivDir, "ocv_drv"), 0).
 
 send_frames(D, F) ->
   ok = query_frame(D, F),
