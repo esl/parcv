@@ -29,6 +29,10 @@ static void
 frame_cleanup(ErlNifEnv* env, void* arg) {
   enif_free(arg);
 }
+static void
+image_cleanup(ErlNifEnv* env, void* arg) {
+  enif_free(arg);
+}
 
 static int 
 load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info)
@@ -39,6 +43,9 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info)
 				       flags, 0);
   frame_res = enif_open_resource_type(env, "ocv_nif", "ocv_frame",
 				      &frame_cleanup,
+				      flags, 0);
+  image_res = enif_open_resource_type(env, "ocv_nif", "ocv_image",
+				      &image_cleanup,
 				      flags, 0);
   return 0;
 }
@@ -76,9 +83,12 @@ new_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
   }
   frame_t* frame = enif_alloc_resource(frame_res, sizeof(frame_t));
   frame->_frame = (IplImage*) cvQueryFrame(dev->_device);
-  cvCvtColor(frame->_frame, frame->_frame, CV_RGB2GRAY);
+  if (!frame->_frame->data)
+    return enif_make_atom(e, "error");
+  cvCvtColor(frame->_frame, frame->_frame, CV_BGR2GRAY);
+  cvThreshold(frame->_frame, frame->_frame, 20, 255, THRESH_BINARY);
   return enif_make_tuple2(env, enif_make_atom(env, "ok"), 
-			  enif_make_resource(env, frame));
+			  enif_make_resource(env, gray));
 }
 
 // query_frame/1 :: (device, frame) -> ok | error
@@ -92,7 +102,10 @@ query_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_badarg(env);
   }
   frame->_frame = (IplImage*) cvQueryFrame(dev->_device);
-  cvCvtColor(frame->_frame, frame->_frame, CV_RGB2GRAY);
+  if (!frame->_frame->data)
+    return enif_make_atom(e, "error");
+  cvCvtColor(frame->_frame, frame->_frame, CV_BGR2GRAY);
+  cvThreshold(frame->_frame, frame->_frame, 20, 255, THRESH_BINARY);
   return enif_make_atom(env, "ok");
 }
 
