@@ -2,6 +2,9 @@
 
 -behaviour(gen_server).
 
+-define(IMAGE_HEIGHT, 512).
+-define(IMAGE_WIDTH, 512).
+
 %%------------------------------------------------------------------------------
 -export([start_link/0]).
 -export([init/1, terminate/2, code_change/3]).
@@ -33,8 +36,17 @@ error_from(Sock) ->
 handle_call({receive_from, Sock, Lim}, _From, S) ->
   spawn(imgproc_srv, input_channel, [Sock, Lim]),
   {reply, ok, S};
-handle_call({error_from, Sock}, _From, S) ->
+handle_call({error_from, _Sock}, _From, S) ->
   {reply, ok, S}.
+
+handle_cast(_, _) ->
+  not_implemented.
+
+handle_info(_, _) ->
+  not_implemented.
+
+code_change(_, _, _) ->
+  not_implemented.
 
 %%------------------------------------------------------------------------------
 %% Listen for incoming connections
@@ -75,7 +87,7 @@ input_channel(Sock, Lim) ->
   case gen_tcp:recv(Sock, Lim) of
     {ok, Data} ->
       %% Process data here
-      imgproc_nif:transform(Data, Width, Height),
+      imgproc_nif:transform(Data, ?IMAGE_WIDTH, ?IMAGE_HEIGHT),
       input_channel(Sock, Lim);
     {error, closed} ->
       imgproc_info:log(?MODULE, "Closed connection", []),
