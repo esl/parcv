@@ -35,13 +35,14 @@ receive_from(Sock) ->
   gen_server:call(?MODULE, {receive_from, Sock}).
 
 error_from(Sock) ->
-  imgproc_info:log(?MODULE, "Error from socket"),
+  imgproc_info:log(?MODULE, "Error from socket", []),
   gen_server:call(?MODULE, {error_from, Sock}).
 
 %%------------------------------------------------------------------------------
 
 handle_call({receive_from, Sock, Lim}, _From, S) ->
-  spawn(fun () -> input_channel(Sock, Lim) end),
+  imgproc_info:log(?MODULE, "Spawning input channel", [])
+  Pid = spawn(fun () -> input_channel(Sock, Lim) end),
   {reply, ok, S};
 handle_call({error_from, _Sock}, _From, S) ->
   {reply, ok, S}.
