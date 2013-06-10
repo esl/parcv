@@ -83,8 +83,6 @@ new_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
   }
   frame_t* frame = enif_alloc_resource(frame_res, sizeof(frame_t));
   frame->_frame = (IplImage*) cvQueryFrame(dev->_device);
-  if (!frame->_frame->data)
-    return enif_make_atom(e, "error");
   cvCvtColor(frame->_frame, frame->_frame, CV_BGR2GRAY);
   cvThreshold(frame->_frame, frame->_frame, 20, 255, THRESH_BINARY);
   return enif_make_tuple2(env, enif_make_atom(env, "ok"), 
@@ -102,8 +100,6 @@ query_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_badarg(env);
   }
   frame->_frame = (IplImage*) cvQueryFrame(dev->_device);
-  if (!frame->_frame->data)
-    return enif_make_atom(e, "error");
   cvCvtColor(frame->_frame, frame->_frame, CV_BGR2GRAY);
   cvThreshold(frame->_frame, frame->_frame, 20, 255, THRESH_BINARY);
   return enif_make_atom(env, "ok");
