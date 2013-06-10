@@ -15,7 +15,7 @@
 
 %%------------------------------------------------------------------------------
 start_link() ->
-  imgproc_info:log(?MODULE, "Initialising image processing server"),
+  imgproc_info:log(?MODULE, "Initialising image processing server", []),
   {ok, KernelSrc} = application:get_env(kernel_src),
   imgproc_nif:initialize(KernelSrc),
   gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -28,7 +28,7 @@ terminate(_, _) ->
   ok.
 
 receive_from(Sock) ->
-  imgproc_info:log(?MODULE, "Receiving from socket"),
+  imgproc_info:log(?MODULE, "Receiving from socket", []),
   gen_server:call(?MODULE, {receive_from, Sock}).
 
 error_from(Sock) ->
