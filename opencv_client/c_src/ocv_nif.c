@@ -76,6 +76,7 @@ new_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
   }
   frame_t* frame = enif_alloc_resource(frame_res, sizeof(frame_t));
   frame->_frame = (IplImage*) cvQueryFrame(dev->_device);
+  cvCvtColor(frame->_frame, frame->_frame, CV_RGB2GRAY);
   return enif_make_tuple2(env, enif_make_atom(env, "ok"), 
 			  enif_make_resource(env, frame));
 }
@@ -91,10 +92,11 @@ query_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_badarg(env);
   }
   frame->_frame = (IplImage*) cvQueryFrame(dev->_device);
+  cvCvtColor(frame->_frame, frame->_frame, CV_RGB2GRAY);
   return enif_make_atom(env, "ok");
 }
 
-// frame_to_tuple/1 :: (frame) -> {ok, {H, W, NChannels, ImageSize, ImageData}}
+// frame_to_tuple/1 :: (frame) -> {ok, {W, H, NChannels, ImageSize, ImageData}}
 static ERL_NIF_TERM
 frame_to_tuple(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
