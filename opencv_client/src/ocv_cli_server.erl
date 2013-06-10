@@ -39,7 +39,7 @@ send_data(Data) ->
 
 %%------------------------------------------------------------------------------
 init([]) ->
-  {ok, []}.
+  {ok, #state{}}.
 
 %% callbacks
 handle_call({connect, Host, Port, PacketDim}, _From, S0) ->
