@@ -47,6 +47,7 @@ handle_call({connect, Host, Port, PacketDim}, _From, S0) ->
     {ok, Sock} ->
       io:format("Initiating client handshake~n",[]),
       S1 = input_client_handshake(Sock, PacketDim, S0),
+      io:format("Updating state to ~p~n", [S1]),
       {reply, ok, S1};
     {error, Reason} ->
       io:format("error: ~p", [Reason]),
