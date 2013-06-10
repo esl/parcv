@@ -95,7 +95,7 @@ query_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
   IplImage* raw_image = (IplImage*) cvQueryFrame(dev->_device);
   IplImage* gray_image = cvCreateImage(cvGetSize(raw_image), IPL_DEPTH_8U, 1);
   cvCvtColor(raw_image, gray_image, CV_RGB2GRAY);
-  free(frame->_frame);
+  // free(frame->_frame);
   frame->_frame = gray_image;
   return enif_make_atom(env, "ok");
 }
