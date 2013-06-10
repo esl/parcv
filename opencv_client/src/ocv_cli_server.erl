@@ -15,7 +15,18 @@
 
 %%------------------------------------------------------------------------------
 start_link() ->
-  gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+  {ok, SrvPid} = gen_server:start_link({local, ?MODULE}, ?MODULE, [], []),
+  {ok, Host} = application:get_env(host),
+  {ok, Port} = application:get_env(port),
+  {ok, Size} = application:get_env(size),
+  case connect(Host, Port, Size) of
+    disconnected ->
+      io:format("[ocl_cli_server] Disconnected~n"),
+      disconnected;
+    _Other ->
+      _NifPid = spawn_link(ocv_nif, loop_send_frames, []),
+      {ok, SrvPid}
+  end.
 
 connect(Host, Port, PacketDim) ->
   gen_server:call(?MODULE, {connect, Host, Port, PacketDim}).
@@ -92,12 +103,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% be streamed to the server.
 %%------------------------------------------------------------------------------
 input_client_handshake(Sock, PacketDim, S0) ->
-  Header = list_to_binary([1] ++ cli_f:to_bytes(PacketDim)),
+  Header = list_to_binary([0] ++ cli_f:to_bytes(PacketDim)),
   ok = gen_tcp:send(Sock, Header),
   case gen_tcp:recv(Sock, 1) of
-    {ok, <<1,Id:32>>} ->
-      S0#state{id=Id, socket=Sock, packet_dim=PacketDim, status=connected};
     {ok, <<0>>} ->
+      S0#state{socket=Sock, packet_dim=PacketDim, status=connected};
+    {ok, <<1>>} ->
       ok = gen_tcp:close(Sock),
       S0#state{packet_dim=PacketDim, status=disconnected};
     {error, closed} ->
