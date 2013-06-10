@@ -726,6 +726,8 @@ nif_initialize(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
     return enif_make_badarg(e);
   }
 
+  printf("initialising NIF with %s\n", str);
+
   initialize(str);
   return enif_make_atom(e, "ok");
 }
