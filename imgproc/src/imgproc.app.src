@@ -15,5 +15,6 @@
                   stdlib
                  ]},
   {mod, { imgproc_app, []}},
-  {env, [{kernel_src, "kernels/edge_detection.cl"}]}
+  {env, [{host, "10.151.0.151"}, {port, 2000},
+  	{kernel_src, "kernels/edge_detection.cl"}]}
  ]}.
