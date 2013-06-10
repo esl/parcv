@@ -16,7 +16,7 @@ init() ->
 	      Path ->
 		Path
 	    end,
-  erlang:load_nif("." ++ filename:join(PrivDir, "imgproc_nif"), 0).
+  erlang:load_nif("." ++ filename:join(PrivDir, "imgproc_drv"), 0).
 
 initialize(_Kernel) ->
   ?NIF_STUB.
