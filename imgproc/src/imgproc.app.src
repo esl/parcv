@@ -15,5 +15,5 @@
                   stdlib
                  ]},
   {mod, { imgproc_app, []}},
-  {env, []}
+  {env, [{kernel_src, "kernels/edge_detection.cl"}]}
  ]}.
