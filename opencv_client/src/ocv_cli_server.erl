@@ -43,7 +43,7 @@ init([]) ->
 
 %% callbacks
 handle_call({connect, Host, Port, PacketDim}, _From, S0) ->
-  case gen_tcp:connect(Host, Port, [binary, {packet, 0}]) of
+  case gen_tcp:connect(Host, Port, [binary, {packet, 0}, {active, false}, {exit_on_close, false}]) of
     {ok, Sock} ->
       S1 = input_client_handshake(Sock, PacketDim, S0),
       {reply, S1#state.status, S1};
