@@ -715,7 +715,7 @@ void write_png(const char* filename, const byte* pixels, int src_w, int src_h) {
 // NIF
 //------------------------------------------------------------------------------
 static ERL_NIF_TERM
-clinit(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
+clinitialize(ErlNifEnv* e, int argc, const ERL_NIF_TERM argv[]) {
   // get string (main kernel)
   unsigned len;
   if (!enif_get_list_length(e, argv[0], &len)) {
