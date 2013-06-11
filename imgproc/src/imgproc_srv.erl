@@ -19,7 +19,7 @@
 start_link() ->
   imgproc_info:log(?MODULE, "Initialising image processing server", []),
   {ok, KernelSrc} = application:get_env(kernel_src),
-  ok = imgproc_nif:clinitialize(KernelSrc),
+  ok = imgproc_nif:initialize(KernelSrc),
   Pid = spawn_link(fun () -> srv_loop() end),
   gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
@@ -27,7 +27,7 @@ init(_) ->
   {ok, #state{}}.
 
 terminate(_, _) ->
-  imgproc_nif:clteardown(),
+  imgproc_nif:teardown(),
   ok.
 
 receive_from(Sock, Lim) ->
