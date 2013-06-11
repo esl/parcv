@@ -150,7 +150,7 @@ list_to_image(ErlNifEnv* e, int argc, ERL_NIF_TERM argv[])
   int* tmp = (int*) malloc(sizeof(int) * len);
   while (enif_get_list_cell(e, list, &hd, &tl)) {
     if (!enif_get_int(e, hd, &tmp[i])) {
-      return make_badarg(e);
+      return enif_make_badarg(e);
     }
     i += 1;
     list = tl;
