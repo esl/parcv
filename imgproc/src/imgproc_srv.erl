@@ -10,7 +10,7 @@
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 %%------------------------------------------------------------------------------
--export([receive_from/1, error_from/1]).
+-export([receive_from/2, error_from/1]).
 %%------------------------------------------------------------------------------
 
 -record(state, { }).
@@ -30,20 +30,20 @@ terminate(_, _) ->
   imgproc_nif:clteardown(),
   ok.
 
-receive_from(Sock) ->
+receive_from(Sock, Lim) ->
   imgproc_info:log(?MODULE, "Receiving from socket", []),
-  gen_server:call(?MODULE, {receive_from, Sock}).
+  gen_server:call(?MODULE, {receive_from, Sock, Lim}).
 
 error_from(Sock) ->
   imgproc_info:log(?MODULE, "Error from socket", []),
   gen_server:call(?MODULE, {error_from, Sock}).
 
 %%------------------------------------------------------------------------------
-
 handle_call({receive_from, Sock, Lim}, _From, S) ->
   imgproc_info:log(?MODULE, "Spawning input channel", []),
-  Pid = spawn(fun () -> input_channel(Sock, Lim) end),
+  _Pid = spawn(fun () -> input_channel(Sock, Lim) end),
   {reply, ok, S};
+
 handle_call({error_from, _Sock}, _From, S) ->
   {reply, ok, S}.
 
@@ -80,7 +80,7 @@ tcp_accept_loop(LSock) ->
 	0 ->
 	  imgproc_info:log(?MODULE, "Success - adding camera", []),
 	  ok = gen_tcp:send(Sock, list_to_binary([0])),
-	  imgproc_srv:receive_from(Sock);
+	  imgproc_srv:receive_from(Sock, PacketDim);
 	1 ->
 	  imgproc_info:log(?MODULE, "Error, ack incorrect", []),
 	  ok = gen_tcp:send(Sock, list_to_binary([1])),
@@ -95,8 +95,8 @@ input_channel(Sock, Lim) ->
   case gen_tcp:recv(Sock, Lim) of
     {ok, Data} ->
       %% Process data here
-      Image = imgproc_nif:cllist_to_image(Data),
-      imgproc_nif:cltransform(Image, ?IMAGE_WIDTH, ?IMAGE_HEIGHT),
+      Image = imgproc_nif:list_to_image(binary_to_list(Data)),
+      imgproc_nif:transform(Image, ?IMAGE_WIDTH, ?IMAGE_HEIGHT),
       input_channel(Sock, Lim);
     {error, closed} ->
       imgproc_info:log(?MODULE, "Closed connection", []),
