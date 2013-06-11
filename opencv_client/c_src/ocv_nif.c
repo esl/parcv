@@ -92,7 +92,7 @@ query_frame(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
       !enif_get_resource(env, argv[1], frame_res, (void**) &frame)) {
     return enif_make_badarg(env);
   }
-  cvReleaseImage(frame->_frame);
+  cvReleaseImage(&frame->_frame);
   IplImage* raw_image = (IplImage*) cvQueryFrame(dev->_device);
   IplImage* gray_image = cvCreateImage(cvGetSize(raw_image), IPL_DEPTH_8U, 1);
   cvCvtColor(raw_image, gray_image, CV_RGB2GRAY);
