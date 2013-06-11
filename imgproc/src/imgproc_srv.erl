@@ -59,6 +59,20 @@ code_change(_, _, _) ->
 %%------------------------------------------------------------------------------
 %% Listen for incoming connections
 %%------------------------------------------------------------------------------
+do_recv(Sock, Lim) ->
+  do_recv(Sock, Lim, 0, list_to_binary([])).
+
+do_recv(Sock, Lim, I, Acc) when I >= Lim ->
+  Acc;
+do_recv(Sock, Lim, I, Acc) ->
+  case gen_tcp:recv(Sock, 0) of
+    {ok, Bin} ->
+      do_recv(Sock, Lim, I + byte_size(Bin), [Bin|Acc]);
+    {error, closed} ->
+      imgproc_info:log(?MODULE, "Client closed connection"),
+      {error, closed}
+  end.
+
 srv_loop() ->
   {ok, Host} = application:get_env(host),
   {ok, Port} = application:get_env(port),
@@ -74,7 +88,7 @@ srv_loop() ->
 
 tcp_accept_loop(LSock) ->
   {ok, Sock} = gen_tcp:accept(LSock),
-  case gen_tcp:recv(Sock, 5) of
+  case gen_tcp:recv(Sock, 0) of
     {ok, <<Ack:8,PacketDim:32>>} ->
       case Ack of
 	0 ->
@@ -92,13 +106,13 @@ tcp_accept_loop(LSock) ->
 	  
 input_channel(Sock, Lim) ->
   imgproc_info:log(?MODULE, "Receiving data ...", []),
-  case gen_tcp:recv(Sock, Lim) of
-    {ok, Data} ->
+  case do_recv(Sock, Lim) of
+    Bin ->
       %% Process data here
       Image = imgproc_nif:list_to_image(binary_to_list(Data)),
       imgproc_nif:transform(Image, ?IMAGE_WIDTH, ?IMAGE_HEIGHT),
       input_channel(Sock, Lim);
     {error, closed} ->
-      imgproc_info:log(?MODULE, "Closed connection", []),
+      imgproc_info:log(?MODULE, "Error, connection closed", []),
       ok
   end.
