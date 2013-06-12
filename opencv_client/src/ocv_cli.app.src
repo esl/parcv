@@ -12,5 +12,5 @@
                   stdlib
                  ]},
   {mod, { ocv_cli_app, []}},
-  {env, [{host, "10.0.0.187"}, {port, 2000}, {size, 262144}]}
+  {env, [{host, "10.0.0.187"}, {port, 2000}, {size, 307200}]}
  ]}.
