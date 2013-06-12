@@ -2,8 +2,8 @@
 
 -behaviour(gen_server).
 
--define(IMAGE_HEIGHT, 512).
--define(IMAGE_WIDTH, 512).
+-define(IMAGE_WIDTH, 640).
+-define(IMAGE_HEIGHT, 480).
 
 %%------------------------------------------------------------------------------
 -export([start_link/0]).
