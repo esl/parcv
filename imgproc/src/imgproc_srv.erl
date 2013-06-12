@@ -107,13 +107,13 @@ tcp_accept_loop(LSock) ->
 input_channel(Sock, Lim) ->
   imgproc_info:log(?MODULE, "Receiving data ...", []),
   case do_recv(Sock, Lim) of
+    {error, closed} ->
+      imgproc_info:log(?MODULE, "Error, connection closed", []),
+      ok;
     Bin ->
       %% Process data here
       Image = imgproc_nif:list_to_image(binary_to_list(Bin)),
       imgproc_nif:transform(Image, ?IMAGE_WIDTH, ?IMAGE_HEIGHT),
       ok = gen_tcp:send(Sock, <<0>>),
       input_channel(Sock, Lim);
-    {error, closed} ->
-      imgproc_info:log(?MODULE, "Error, connection closed", []),
-      ok
   end.
