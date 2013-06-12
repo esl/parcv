@@ -63,7 +63,6 @@ do_recv(Sock, Lim) ->
   do_recv(Sock, Lim, 0, list_to_binary([])).
 
 do_recv(Sock, Lim, I, Acc) when I >= Lim ->
-  ok = gen_tcp:send(Sock, <<0>>),
   Acc;
 do_recv(Sock, Lim, I, Acc) ->
   case gen_tcp:recv(Sock, 0) of
@@ -112,6 +111,7 @@ input_channel(Sock, Lim) ->
       %% Process data here
       Image = imgproc_nif:list_to_image(binary_to_list(Data)),
       imgproc_nif:transform(Image, ?IMAGE_WIDTH, ?IMAGE_HEIGHT),
+      ok = gen_tcp:send(Sock, <<0>>),
       input_channel(Sock, Lim);
     {error, closed} ->
       imgproc_info:log(?MODULE, "Error, connection closed", []),
