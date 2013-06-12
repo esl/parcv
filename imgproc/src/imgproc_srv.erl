@@ -68,7 +68,7 @@ do_recv(Sock, Lim, I, Acc) when I >= Lim ->
 do_recv(Sock, Lim, I, Acc) ->
   case gen_tcp:recv(Sock, 0) of
     {ok, Bin} ->
-      do_recv(Sock, Lim, I + byte_size(Bin), [Bin|Acc]);
+      do_recv(Sock, Lim, I + byte_size(Bin), [Acc] ++ Bin);
     {error, closed} ->
       imgproc_info:log(?MODULE, "Client closed connection"),
       {error, closed}
