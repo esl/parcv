@@ -63,6 +63,7 @@ do_recv(Sock, Lim) ->
   do_recv(Sock, Lim, 0, list_to_binary([])).
 
 do_recv(Sock, Lim, I, Acc) when I >= Lim ->
+  ok = gen_tcp:send(Sock, <<0>>),
   Acc;
 do_recv(Sock, Lim, I, Acc) ->
   case gen_tcp:recv(Sock, 0) of

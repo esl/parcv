@@ -69,14 +69,20 @@ handle_call(disconnect, _From, S0) ->
   end;
 
 handle_call({send_data, Data}, _From, S0) when is_list(Data) ->
-  io:format("Sending data~n",[]),
   case S0#state.status of
     connected ->
       case length(Data) == S0#state.packet_dim of
 	true ->
-	  Msg = list_to_binary(S0#state.id ++ Data),
+	  io:format("Sending data~n",[]),
+	  Msg = list_to_binary(Data),
 	  ok = gen_tcp:send(S0#state.socket, Msg),
-	  {reply, ok, S0};
+	  case gen_tcp:recv(S0#state.socket, 0) of
+	    {ok, <<0>>} ->
+	      {reply, ok, S0};
+	    _Other ->
+	      io:format("Error, received other than <<0>>~n"),
+	      {reply, error, S0}
+	  end;
 	false ->
 	  {reply, data_arity_mismatch, S0}
       end;
