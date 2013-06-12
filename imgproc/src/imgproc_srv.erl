@@ -115,5 +115,5 @@ input_channel(Sock, Lim) ->
       Image = imgproc_nif:list_to_image(binary_to_list(Bin)),
       imgproc_nif:transform(Image, ?IMAGE_WIDTH, ?IMAGE_HEIGHT),
       ok = gen_tcp:send(Sock, <<0>>),
-      input_channel(Sock, Lim);
+      input_channel(Sock, Lim)
   end.
