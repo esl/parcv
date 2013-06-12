@@ -76,7 +76,7 @@ do_recv(Sock, Lim, I, Acc) ->
 srv_loop() ->
   {ok, Host} = application:get_env(host),
   {ok, Port} = application:get_env(port),
-  Opt = [binary, {packet, 0}, {active, false}, {exit_on_close, false}],
+  Opt = [binary, {packet, 0}, {active, true}, {exit_on_close, false}],
   imgproc_info:log(?MODULE, "Server listening on port ~p", [Port]),
   case gen_tcp:listen(Port, Opt) of
     {ok, LSock} ->
