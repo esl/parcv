@@ -84,6 +84,7 @@ handle_call({send_data, Data}, _From, S0) when is_list(Data) ->
 	      {reply, error, S0}
 	  end;
 	false ->
+	  io:format("Data arity mismatch, data_sz: ~p, packet_dim: ~p~n", [length(Data), S0#state.packet_dim]),
 	  {reply, data_arity_mismatch, S0}
       end;
     disconnected ->
