@@ -79,8 +79,8 @@ handle_call({send_data, Data}, _From, S0) when is_list(Data) ->
 	  case gen_tcp:recv(S0#state.socket, 0) of
 	    {ok, <<0>>} ->
 	      {reply, ok, S0};
-	    _Other ->
-	      io:format("Error, received other than <<0>>~n"),
+	    Other ->
+	      io:format("Error, received other than <<0>>, ~p~n", [Other]),
 	      {reply, error, S0}
 	  end;
 	false ->
